@@ -21,13 +21,12 @@ from django.conf.urls.static import static
 from django.conf import settings
 from .views import NotificationView
 
-
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("book.api.urls")),
     path("api/auth/", include("account.api.urls")),
-
-    path("notif/",NotificationView.as_view(),
-
-)
+    path(
+        "notif/",
+        NotificationView.as_view(),
+    ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

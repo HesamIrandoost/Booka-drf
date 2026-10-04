@@ -8,7 +8,7 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from django.db.models import F, Value, Q
+from django.db.models import F, Value, Q, Count, Avg, Sum, Min, Max
 from django.db.models.functions import Greatest
 
 from book.models import Author, Book, Collection, Genre, Review, ReviewLike
@@ -48,7 +48,53 @@ class AllBookListView(generics.ListAPIView):
 
     ordering = ["-created_at"]
 
-    queryset = Book.objects.select_related("author").prefetch_related("genres").all()
+    def get_queryset(self):
+        queryset = Book.objects.select_related("author").prefetch_related("genres")
+
+        min_rating = self.request.query_params.get("min_rating")
+        max_rating = self.request.query_params.get("max_rating")
+        min_pub_date = self.request.query_params.get("min_pub_date")
+        max_pub_date = self.request.query_params.get("max_pub_date")
+        genres = self.request.query_params.get("genre")
+        filters = Q()
+
+        if min_rating:
+            filters &= Q(star__gte=min_rating)
+        if max_rating:
+            filters &= Q(star__lte=max_rating)
+        if min_pub_date:
+            filters &= Q(published_date__gte=min_pub_date + "-1-1")
+        if max_pub_date:
+            filters &= Q(published_date__lte=max_pub_date + "-1-1")
+
+        if genres:
+            genre = genres.split(",")
+            # filters &= Q(genres__slug__in=genres)
+            q_genre = (
+                queryset.filter(genres__slug__in=genre)
+                .annotate(
+                    matched_genre=Count(
+                        "genres", filter=Q(genres__slug__in=genre), distinct=True
+                    )
+                )
+                .filter(matched_genre=len(genre))
+            )
+            queryset = q_genre
+
+        return queryset.filter(filters).annotate(
+            star_avg=Avg("reviews__star"), reviews_count=Count("reviews", distinct=True)
+        )
+
+    # def get_queryset(self):
+    #     return (
+    #         Book.objects
+    #         .select_related("author")
+    #         .prefetch_related("genres")
+    #         .annotate(
+    #             star_avg=Avg("reviews__star"),
+    #             reviews_count=Count("reviews", distinct=True),
+    #         )
+    #     )
 
 
 class DetailBookView(generics.RetrieveAPIView):
@@ -56,7 +102,10 @@ class DetailBookView(generics.RetrieveAPIView):
     lookup_field = "slug"
 
     queryset = (
-        Book.objects.select_related("author")
+        Book.objects.annotate(
+            reviews_count=Count("reviews"), star_avg=Avg("reviews__star")
+        )
+        .select_related("author")
         .prefetch_related(
             "genres",
             "reviews__user",
@@ -102,12 +151,12 @@ class ReviewListCreateView(generics.ListCreateAPIView):
             raise ValidationError({"detail": "You have already reviewed this book."})
 
         review = serializer.save(user=self.request.user, book=book)
-                
+
         send_review_notification.delay(
             self.request.user.id,
             review.book.title,
         )
-        
+
         book.update_star()
 
 

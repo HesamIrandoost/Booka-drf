@@ -144,11 +144,18 @@ class ReviewReplySerializer(serializers.ModelSerializer):
 class AllBooksSerializer(serializers.ModelSerializer):
     author = AuthorSerializer(read_only=True)
     genres = GenreSerializer(many=True, read_only=True)
+    star_avg = serializers.DecimalField(decimal_places=1, max_digits=2, read_only=True)
 
+    reviews_count = serializers.IntegerField(read_only=True)
+
+    # pages_sum  = serializers.IntegerField(read_only=True)
     class Meta:
         model = Book
         fields = [
+            # "pages_sum",
             "id",
+            "reviews_count",
+            "star_avg",
             "author",
             "slug",
             "title",
@@ -169,10 +176,15 @@ class DetailBooksSerializer(serializers.ModelSerializer):
     genres = GenreSerializer(many=True, read_only=True)
     reviews = ReviewSerializer(many=True, read_only=True)
 
+    reviews_count = serializers.IntegerField(read_only=True)
+    star_avg = serializers.DecimalField(decimal_places=1, max_digits=2, read_only=True)
+
     class Meta:
         model = Book
         fields = [
             "id",
+            "reviews_count",
+            "star_avg",
             "author",
             "slug",
             "title",

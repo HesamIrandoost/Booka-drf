@@ -23,12 +23,6 @@ class Book(models.Model):
     published_date = models.DateField(auto_now=False, auto_now_add=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def update_star(self):
-        average = self.reviews.aggregate(avg_star=Avg("star"))["avg_star"] or 0
-
-        self.star = average
-        self.save(update_fields=["star"])
-
     def save(self, *args, **kwargs):
         if not self.slug:
             slug = slugify(self.title)

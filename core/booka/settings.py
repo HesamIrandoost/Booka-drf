@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 from decouple import config
 
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -27,7 +26,8 @@ SECRET_KEY = "django-insecure-ux1d#(2szvwczm074-)15t+0kvu$4!vde(zr#$9=v%zs8ygfw!
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = config("ALLOWED_HOSTS"),
+ALLOWED_HOSTS = ["*"]
 
 
 AUTH_USER_MODEL = "account.User"

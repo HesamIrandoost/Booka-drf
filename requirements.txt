@@ -24,3 +24,5 @@ redis
 django-redis
 psycopg[binary]
 python-decouple
+
+gunicorn
