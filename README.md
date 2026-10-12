@@ -1,557 +1,317 @@
 # 📚 Booka
 
-> A Goodreads / IMDb-inspired platform for discovering books, sharing reviews, rating books, and building personal collections.
+A backend-focused book discovery platform inspired by Goodreads and IMDb, built with **Django** and **Django REST Framework**.
 
-**Booka** is a backend-focused book platform built with **Django and Django REST Framework**.
+Booka provides APIs for browsing books, exploring authors and genres, writing reviews, replying to reviews, liking reviews, and managing personal book collections.
 
-The goal of this project is to build a realistic REST API where users can discover books, explore authors and genres, rate and review books, reply to reviews, like reviews, and create personal book collections.
+> **Status:** Active development. Core APIs are implemented, but validation, concurrency handling, test coverage, and production configuration still need work.
 
----
+## Implemented features
 
-## 🚀 Project Status
+- Custom user model with an optional avatar.
+- Registration, JWT login, token refresh, and authenticated profile updates.
+- Book list and detail endpoints.
+- Book search, filtering, ordering, and pagination.
+- Author and genre endpoints.
+- Review creation, replies, and recent reviews.
+- Review like/unlike toggle with a unique user/review database constraint.
+- Stored book average rating, recalculated through review signals.
+- Public and private collections, with owner-scoped update and delete operations.
+- Add/remove books in owned collections.
+- Celery task for short-lived review notifications stored in Redis.
+- Development seed command, model tests, and Docker Compose services.
 
-> 🟡 **In Development**
+## Stack
 
-Booka is being developed step by step as a real-world Django REST API project.
+| Technology | Role |
+| --- | --- |
+| Python 3.13 | Version used by the Docker image |
+| Django 6.0.1 | Application framework |
+| Django REST Framework 3.16.1 | REST API |
+| Simple JWT | JWT authentication |
+| django-filter | Query parameter filtering |
+| PostgreSQL 17 | Database in Docker Compose |
+| Redis 7 | Cache and Celery broker in Docker Compose |
+| Celery | Background tasks |
+| Pillow | Image fields |
+| pytest, pytest-django, factory-boy | Testing |
+| Faker | Development seed data |
 
-### Current
+Dependencies are listed in [requirements.txt](requirements.txt). Some dependencies are not version-pinned yet.
 
-* [x] Custom User Model
-* [x] Author model
-* [x] Book model
-* [x] Genre model
-* [x] Review system
-* [x] Review replies
-* [x] Book rating calculation
-* [x] User collections
-* [x] Public / private collections
-* [x] Seed data command
-* [x] Book serializer
-* [x] All Books API
-* [x] Pagination
-
-### Coming Soon
-
-* [ ] Book detail API
-* [ ] Search
-* [ ] Filtering
-* [ ] Ordering
-* [ ] Review API
-* [ ] Review likes
-* [ ] Collection API
-* [ ] Authentication
-* [ ] Permissions
-* [ ] User profile API
-* [ ] API documentation
-* [ ] Automated tests
-* [ ] Query optimization
-* [ ] Docker
-* [ ] Production deployment
-
----
-
-# ✨ Features
-
-## 📖 Books
-
-Users will be able to:
-
-* Browse books
-* View detailed book information
-* Explore authors
-* Explore genres
-* Search books
-* Filter books
-* Sort books
-* View book ratings
-
-Each book contains information such as:
-
-* Title
-* Slug
-* Cover
-* Author
-* Genres
-* Description
-* Summary
-* Number of pages
-* Publisher
-* Publication date
-* Average rating
-
----
-
-## 👤 Users
-
-Booka uses a custom Django User model.
-
-Users will eventually be able to:
-
-* Register
-* Login
-* Manage their profile
-* Review books
-* Rate books
-* Create collections
-* Like reviews
-* Reply to reviews
-
----
-
-## ⭐ Reviews & Ratings
-
-Users can review books and give them a rating from **1 to 5 stars**.
-
-Reviews support:
-
-* Subject
-* Text
-* Star rating
-* Likes
-* Replies
-* Creation date
-* Active / inactive status
-
-Book ratings are calculated from the ratings of the main reviews.
-
-Replies are **not included** in the book's average rating.
-
----
-
-## 💬 Review Replies
-
-Reviews support self-referencing replies.
-
-Example:
-
-```text
-Review
-│
-├── Reply
-├── Reply
-└── Reply
-```
-
-This allows users to have discussions around a book review.
-
----
-
-## 📚 Collections
-
-Users can create their own book collections.
-
-Examples:
-
-```text
-My Favorite Books
-Books I Want to Read
-Best Classics
-My Favorite Fantasy Books
-Books That Changed My Perspective
-```
-
-Collections support:
-
-* Title
-* Description
-* Cover
-* Books
-* Owner
-* Public / private visibility
-* Creation date
-
----
-
-# 🏗️ Project Architecture
-
-The project follows Django's application-based architecture.
+## Project structure
 
 ```text
 Booka/
-│
 ├── core/
-│   ├── settings.py
-│   ├── urls.py
-│   ├── asgi.py
-│   └── wsgi.py
-│
-├── book/
-│   ├── migrations/
-│   ├── management/
-│   │   └── commands/
-│   │       └── seed_data.py
-│   │
-│   ├── admin.py
-│   ├── models.py
-│   ├── serializers.py
-│   ├── views.py
-│   ├── pagination.py
-│   ├── urls.py
-│   └── ...
-│
-├── account/
-│   └── ...
-│
-├── manage.py
+│   ├── manage.py
+│   ├── booka/                 # Settings, root URLs, Celery, notification view
+│   ├── account/
+│   │   ├── api/               # Registration, JWT and profile endpoints
+│   │   └── migrations/
+│   └── book/
+│       ├── api/               # Views, serializers, filters and pagination
+│       ├── models/            # Authors, books, genres, reviews and collections
+│       ├── migrations/
+│       ├── management/commands/
+│       ├── tests/
+│       ├── signals.py
+│       └── tasks.py
+├── Dockerfile
+├── docker-compose.yml
 ├── requirements.txt
 └── README.md
 ```
 
----
+## Run with Docker Compose
 
-# 🗄️ Data Model
+The supplied Compose configuration runs Django, PostgreSQL, Redis, a Celery worker, and Celery Beat. The web container uses Django's development server.
 
-The core relationships currently look like this:
-
-```text
-                         ┌─────────────┐
-                         │    User     │
-                         └──────┬──────┘
-                                │
-              ┌─────────────────┼─────────────────┐
-              │                 │                 │
-              ▼                 ▼                 ▼
-          Reviews          Collections         Profile
-              │                 │
-              │                 │
-              ▼                 ▼
-            Book ◄──────────── Books
-              │
-       ┌──────┴──────┐
-       │             │
-       ▼             ▼
-    Author         Genre
-```
-
-### Review relationships
-
-```text
-Book
- │
- ├── Review
- │    ├── Reply
- │    ├── Reply
- │    └── Reply
- │
- └── Review
-```
-
----
-
-# 🔌 API
-
-The API is built using **Django REST Framework**.
-
-### Books
-
-```http
-GET /api/books/
-```
-
-Returns a paginated list of books.
-
-Example:
-
-```http
-GET /api/books/?page=1
-```
-
-Pagination currently uses **10 books per page**.
-
-Example response:
-
-```json
-{
-    "count": 15,
-    "next": "http://127.0.0.1:8000/api/books/?page=2",
-    "previous": null,
-    "results": [
-        {
-            "id": 1,
-            "title": "1984",
-            "slug": "1984",
-            "star": 4.3
-        }
-    ]
-}
-```
-
-> More endpoints will be documented here as the API grows.
-
----
-
-# 🧪 Development Data
-
-Booka includes a custom Django management command for generating development data.
-
-The seed command creates:
-
-* 20 users
-* Real-world book titles
-* Real-world authors
-* Genres
-* Reviews
-* Review replies
-* Book ratings
-* User collections
-
-Run:
+### 1. Clone the repository
 
 ```bash
-python manage.py seed_data
-```
-
-All generated users use:
-
-```text
-Password: Test12345
-```
-
-> The seed command is intended for development and testing only.
-
----
-
-# 🛠️ Tech Stack
-
-| Technology            | Purpose                     |
-| --------------------- | --------------------------- |
-| Python                | Programming language        |
-| Django                | Web framework               |
-| Django REST Framework | REST API                    |
-| SQLite / PostgreSQL   | Database                    |
-| Pillow                | Image processing            |
-| Faker                 | Development data generation |
-| Git                   | Version control             |
-
-More technologies will be added as the project evolves.
-
----
-
-# ⚙️ Installation
-
-## 1. Clone the repository
-
-```bash
-git clone <repository-url>
+git clone https://github.com/HesamIrandoost/Booka.git
 cd Booka
 ```
 
-## 2. Create a virtual environment
+### 2. Create `.env` in the repository root
 
-```bash
-python -m venv venv
+```dotenv
+POSTGRES_DB=booka
+POSTGRES_USER=booka
+POSTGRES_PASSWORD=replace_with_a_local_password
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
 ```
 
-Activate it:
+The `.env` file is ignored by Git. Redis URLs are currently hardcoded in Django settings to use the Compose service hostname `redis`.
 
-### Linux / macOS
-
-```bash
-source venv/bin/activate
-```
-
-### Windows
+### 3. Start the database and Redis
 
 ```bash
-venv\Scripts\activate
+docker compose up -d db redis
 ```
 
-## 3. Install dependencies
+Wait until PostgreSQL reports that it is ready to accept connections. `depends_on` controls startup order but does not wait for database readiness.
+
+### 4. Build, migrate, and create an administrator
+
+```bash
+docker compose build
+docker compose run --rm web python core/manage.py migrate
+docker compose run --rm web python core/manage.py createsuperuser
+```
+
+### 5. Start the application
+
+```bash
+docker compose up -d
+```
+
+- Books API: <http://127.0.0.1:8000/api/books/>
+- Admin: <http://127.0.0.1:8000/admin/>
+
+Useful commands:
+
+```bash
+docker compose logs -f web celery
+docker compose down
+```
+
+## Run without Docker
+
+Use Python 3.13 to match the Docker image. Provide a running PostgreSQL database and Redis instance.
+
+```bash
+python -m venv .venv
+```
+
+Activate the environment:
+
+```bash
+# Linux / macOS
+source .venv/bin/activate
+```
+
+```powershell
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+```
+
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 4. Run migrations
+Create `.env` with the same variables as above, but use your PostgreSQL hostname, such as `POSTGRES_HOST=127.0.0.1`. Create the database and user first.
+
+For Redis running locally, change the cache location and Celery broker URL in `core/booka/settings.py` from hostname `redis` to `127.0.0.1`. These URLs are not currently configurable through `.env`.
 
 ```bash
-python manage.py migrate
+python core/manage.py migrate
+python core/manage.py createsuperuser
+python core/manage.py runserver
 ```
 
-## 5. Create a superuser
+Start a Celery worker in another terminal using the same virtual environment:
 
 ```bash
-python manage.py createsuperuser
+cd core
+celery -A booka worker -l info
 ```
 
-## 6. Generate development data
+## API reference
+
+Paths below are relative to the server root. Write operations marked authenticated require an access token.
+
+| Method | Path | Access / behavior |
+| --- | --- | --- |
+| POST | `/api/auth/register/` | Public registration |
+| POST | `/api/auth/login/` | Public; returns access and refresh tokens |
+| POST | `/api/auth/refresh/` | Public; requires a refresh token |
+| GET, PUT, PATCH | `/api/auth/me/` | Authenticated; current profile |
+| GET | `/api/books/` | Public book list |
+| GET | `/api/books/<slug>/` | Public book detail |
+| GET, POST | `/api/books/<slug>/reviews/` | Public read; authenticated creation |
+| POST | `/api/books/<slug>/reviews/<pk>/` | Authenticated; create a reply |
+| GET | `/api/reviews/recent/` | Public; latest six active main reviews |
+| POST | `/api/reviews/<pk>/like/` | Authenticated; toggle like, excluding own reviews |
+| GET | `/api/authors/` | Public author list |
+| GET | `/api/authors/<slug>/` | Public author detail |
+| GET | `/api/genres/` | Public genre list |
+| GET | `/api/genres/<pk>/` | Currently broken: route passes `pk`, view expects `slug` |
+| GET, POST | `/api/collections/` | Public collections; authenticated creation |
+| GET, POST | `/api/collections/user/` | Authenticated; own public and private collections |
+| GET, PUT, PATCH, DELETE | `/api/collections/<pk>/` | Authenticated owner only |
+| GET | `/api/collections/public/<pk>/` | Public collection detail |
+| POST | `/api/collections/<pk>/add/<book_id>/` | Authenticated owner; add a book |
+| DELETE | `/api/collections/<pk>/remove/<book_id>/` | Authenticated owner; remove a book |
+| GET | `/notif/` | Reads and deletes the cached notification for the current user; authentication permission is not explicitly enforced yet |
+
+### Authentication
+
+Registration accepts `username`, `password`, `first_name`, and `last_name`. The password has a minimum length of eight characters; Django's configured password validators are not yet called by the registration serializer.
+
+Login request:
+
+```json
+{
+  "username": "reader",
+  "password": "your_password"
+}
+```
+
+Pass the access token on authenticated requests:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+Refresh request:
+
+```json
+{
+  "refresh": "<refresh_token>"
+}
+```
+
+Profile updates accept `first_name`, `last_name`, and `avatar`. Image uploads require multipart form data.
+
+### Search, filtering, and pagination
+
+Books and authors use page-number pagination with **20 items per page**. Other list endpoints currently have no configured pagination, except recent reviews, which return at most six records.
+
+```http
+GET /api/books/?page=2
+GET /api/books/?search=tolkien
+GET /api/books/?genre=fantasy
+GET /api/books/?author=author-slug
+GET /api/books/?publisher=Publisher%20Name
+GET /api/books/?ordering=-star
+```
+
+Book search covers title, author first/last name, and genre name. Supported ordering fields are `title`, `author`, `star`, and `published_date`; the default order is newest creation first.
+
+Paginated responses contain `count`, `next`, `previous`, and `results`.
+
+### Reviews and collections
+
+Create a main review with:
+
+```json
+{
+  "subject": "Worth reading",
+  "text": "An engaging story with memorable characters.",
+  "star": 5
+}
+```
+
+The endpoint requires a rating from 1 to 5 and checks for an existing main review by the same user. Replies accept `text`; user, book, parent, and rating are assigned by the server.
+
+Create a collection with `title`, optional `description` and `cover`, and `is_public`. Collections default to public. Books are read-only in the collection serializer; use the dedicated add/remove endpoints to change membership.
+
+Review notification tasks store one message per user for 60 seconds. A newer message replaces the previous message; this is a temporary notification mechanism, not a persistent inbox. The Celery worker must be available to process tasks.
+
+## Development seed data
+
+**The seed command deletes existing reviews, collections, books, authors, genres, and all non-superuser accounts before generating data. Use a disposable development database only.**
 
 ```bash
-python manage.py seed_data
+# Docker
+docker compose run --rm web python core/manage.py seed_data
 ```
-
-## 7. Start the development server
 
 ```bash
-python manage.py runserver
+# Local
+python core/manage.py seed_data
 ```
 
-The API will be available at:
+The command generates 20 users plus authors, genres, books, reviews, replies, and collections. Generated users share the password `Test12345`.
 
-```text
-http://127.0.0.1:8000/
+## Tests
+
+Run from `core/`, where `pytest.ini` is located:
+
+```bash
+cd core
+pytest
 ```
 
----
+Or through Docker:
 
-# 🔐 Authentication
-
-Authentication will be implemented using JWT.
-
-Planned endpoints:
-
-```text
-POST /api/auth/register/
-POST /api/auth/login/
-POST /api/auth/refresh/
-GET  /api/auth/me/
+```bash
+docker compose run --rm -w /app/core web pytest
 ```
 
-Authentication and authorization will be expanded as the project develops.
+The configured PostgreSQL role must be able to create a test database. Current coverage includes model creation, author names, genres, and a basic rating average. API permissions, replies, moderation, concurrent requests, and background task failure paths are not covered yet. Some factories also need correction before broader use.
 
----
+## Known limitations and next steps
 
-# 🔎 Planned API
+- Fix the genre detail URL/view lookup mismatch.
+- Exclude replies and inactive reviews from book rating calculations.
+- Filter inactive reviews out of book detail responses.
+- Validate that a reply's review belongs to the book identified by the URL.
+- Add a database constraint for one main review per user/book and handle concurrent requests.
+- Handle duplicate and non-ASCII titles when generating unique slugs.
+- Remove the duplicate `ReviewSerializer` definition and repeated rating updates.
+- Improve transaction boundaries and Celery failure handling around review creation.
+- Complete nested query optimization for author and genre details.
+- Add pagination to unbounded lists and simplify list response payloads.
+- Expand model/API tests, repair factories, and add CI.
+- Publish an API schema/documentation endpoint; `drf-yasg` is installed but no documentation route is configured.
+- Add review update/delete APIs and persistent notifications if needed.
 
-The planned API structure is approximately:
+## Deployment status
 
-```text
-/api/
-│
-├── auth/
-│   ├── register/
-│   ├── login/
-│   ├── refresh/
-│   └── me/
-│
-├── books/
-│   ├── GET /
-│   ├── GET /<slug>/
-│   ├── search/
-│   └── filters/
-│
-├── authors/
-│   ├── GET /
-│   └── GET /<id>/
-│
-├── genres/
-│   ├── GET /
-│   └── GET /<id>/
-│
-├── reviews/
-│   ├── GET /
-│   ├── POST /
-│   ├── PATCH /<id>/
-│   └── DELETE /<id>/
-│
-└── collections/
-    ├── GET /
-    ├── POST /
-    ├── PATCH /<id>/
-    └── DELETE /<id>/
-```
+The current configuration is intended for development: `DEBUG=True`, a hardcoded development secret key, empty `ALLOWED_HOSTS`, permissive CORS, and Django's development server.
 
-This structure may change during development.
+Before production deployment, configure environment-specific settings, rotate the secret key, set allowed hosts and origins, disable debug, use a production application server, and configure static/media serving. Database readiness checks, deployment automation, and operational monitoring remain future work.
 
----
+## Learning focus
 
-# 📈 Development Roadmap
+Booka is a practical project for learning relational modeling, Django ORM, DRF validation and permissions, database constraints, transactions, query optimization, testing, and background processing. The goal is to develop a reliable API and understand the behavior of each component.
 
-Booka is being developed progressively.
+## License
 
-### Phase 1 — Core Models
-
-* [x] User
-* [x] Author
-* [x] Book
-* [x] Genre
-* [x] Review
-* [x] Collection
-
-### Phase 2 — Basic API
-
-* [x] Serializers
-* [x] All Books endpoint
-* [x] Pagination
-* [ ] Book detail
-* [ ] Author endpoints
-* [ ] Genre endpoints
-
-### Phase 3 — Discovery
-
-* [ ] Search
-* [ ] Filtering
-* [ ] Ordering
-* [ ] Advanced ORM queries
-* [ ] Aggregations
-* [ ] Annotations
-
-### Phase 4 — User Interaction
-
-* [ ] Authentication
-* [ ] Permissions
-* [ ] Create reviews
-* [ ] Update reviews
-* [ ] Delete reviews
-* [ ] Review likes
-* [ ] Replies
-* [ ] Collections
-
-### Phase 5 — Production Features
-
-* [ ] PostgreSQL
-* [ ] Redis
-* [ ] Caching
-* [ ] Celery
-* [ ] API documentation
-* [ ] Automated tests
-* [ ] Query optimization
-* [ ] Docker
-* [ ] Nginx
-* [ ] Deployment
-
----
-
-# 🧠 Learning Goals
-
-Booka is also a practical backend project for exploring professional Django development.
-
-The project focuses on:
-
-* Django ORM
-* Django REST Framework
-* Relational database design
-* ForeignKey relationships
-* Many-to-Many relationships
-* Self-referencing relationships
-* Serializers
-* Generic API views
-* Pagination
-* Filtering
-* Searching
-* Permissions
-* Authentication
-* Signals
-* Aggregation
-* Annotation
-* Query optimization
-* Testing
-* API architecture
-* Production deployment
-
----
-
-# 📌 Project Philosophy
-
-Booka is intentionally being developed incrementally.
-
-Instead of implementing every feature at once, each part of the API is built, tested, reviewed, and then expanded.
-
-The goal is not only to make the application work, but to understand **why the architecture works** and how the same concepts apply to larger Django applications.
-
----
-
-# 📄 License
-
-This project is currently for educational and portfolio purposes.
-
+[MIT](LICENSE) — Copyright © 2026 Hesam irandoost.
