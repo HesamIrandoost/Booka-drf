@@ -79,8 +79,16 @@ class AllBookListView(generics.ListAPIView):
             star_avg=Avg("reviews__star"), 
             reviews_count=Count("reviews", distinct=True),
             ).rate()
-
-
+        # q = queryset.filter(filters).annotate(
+        #     star_avg=Avg("reviews__star"), 
+        #     reviews_count=Count("reviews", distinct=True),
+        #     ).rate()
+        # # qb = q.explain()
+        # # print(F"HAAAAAAAAAAA {qb}")
+        # return queryset.filter(filters).annotate(
+        #     star_avg=Avg("reviews__star"), 
+        #     reviews_count=Count("reviews", distinct=True),
+        #     ).rate()
 
 class DetailBookView(generics.RetrieveAPIView):
     serializer_class = DetailBooksSerializer
@@ -142,7 +150,7 @@ class ReviewListCreateView(generics.ListCreateAPIView):
             review.book.title,
         )
 
-        book.update_star()
+        # book.update_star()
 
 
 class ReviewReplyCreateView(generics.CreateAPIView):

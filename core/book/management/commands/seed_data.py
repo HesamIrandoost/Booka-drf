@@ -888,10 +888,10 @@ class Command(BaseCommand):
         # Update Book ratings
         # ==========================================================
 
-        for book in books:
-            book.update_star()
+            # for book in books:
+            #     book.update_star()
 
-        self.stdout.write(self.style.SUCCESS("Book ratings calculated."))
+            # self.stdout.write(self.style.SUCCESS("Book ratings calculated."))
 
         # ==========================================================
         # Collections
