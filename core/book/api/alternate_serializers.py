@@ -11,7 +11,6 @@ class AuthorDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Author
         fields = [
-            "review_count",
             "pk",
             "slug",
             "first_name",

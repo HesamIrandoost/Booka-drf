@@ -75,20 +75,12 @@ class AllBookListView(generics.ListAPIView):
             )
             queryset = q_genre
 
-        return queryset.filter(filters).annotate(
+        q = queryset.filter(filters).annotate(
             star_avg=Avg("reviews__star"), 
             reviews_count=Count("reviews", distinct=True),
             ).rate()
-        # q = queryset.filter(filters).annotate(
-        #     star_avg=Avg("reviews__star"), 
-        #     reviews_count=Count("reviews", distinct=True),
-        #     ).rate()
-        # # qb = q.explain()
-        # # print(F"HAAAAAAAAAAA {qb}")
-        # return queryset.filter(filters).annotate(
-        #     star_avg=Avg("reviews__star"), 
-        #     reviews_count=Count("reviews", distinct=True),
-        #     ).rate()
+        print(q.filter(slug="dune").explain(analyze=True, buffers=True))
+        return q
 
 class DetailBookView(generics.RetrieveAPIView):
     serializer_class = DetailBooksSerializer
