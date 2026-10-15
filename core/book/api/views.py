@@ -8,11 +8,12 @@ from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from django.db.models import F, Value, Q, Count, Avg, Sum, Min, Max
+from django.db.models import F, Value, Q, Count, Avg, Sum, Min, Max, Case, When, CharField
 from django.db.models.functions import Greatest
 
 from book.models import Author, Book, Collection, Genre, Review, ReviewLike
 from book.tasks import send_review_notification
+from .querysets import BookQuerySet
 
 from .filters import BookFilter
 from .pagination import BookPagination
@@ -49,7 +50,7 @@ class AllBookListView(generics.ListAPIView):
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        queryset = Book.objects.select_related("author").prefetch_related("genres")
+        queryset = Book.objects.with_author().prefetch_related("genres")
 
         min_rating = self.request.query_params.get("min_rating")
         max_rating = self.request.query_params.get("max_rating")
@@ -69,32 +70,16 @@ class AllBookListView(generics.ListAPIView):
 
         if genres:
             genre = genres.split(",")
-            # filters &= Q(genres__slug__in=genres)
             q_genre = (
-                queryset.filter(genres__slug__in=genre)
-                .annotate(
-                    matched_genre=Count(
-                        "genres", filter=Q(genres__slug__in=genre), distinct=True
-                    )
-                )
-                .filter(matched_genre=len(genre))
+                queryset.filter_genre(genre)
             )
             queryset = q_genre
 
         return queryset.filter(filters).annotate(
-            star_avg=Avg("reviews__star"), reviews_count=Count("reviews", distinct=True)
-        )
+            star_avg=Avg("reviews__star"), 
+            reviews_count=Count("reviews", distinct=True),
+            ).rate()
 
-    # def get_queryset(self):
-    #     return (
-    #         Book.objects
-    #         .select_related("author")
-    #         .prefetch_related("genres")
-    #         .annotate(
-    #             star_avg=Avg("reviews__star"),
-    #             reviews_count=Count("reviews", distinct=True),
-    #         )
-    #     )
 
 
 class DetailBookView(generics.RetrieveAPIView):
@@ -103,9 +88,9 @@ class DetailBookView(generics.RetrieveAPIView):
 
     queryset = (
         Book.objects.annotate(
-            reviews_count=Count("reviews"), star_avg=Avg("reviews__star")
-        )
-        .select_related("author")
+            reviews_count=Count("reviews"), star_avg=Avg("reviews__star"),
+        ).rate()
+        .with_author()
         .prefetch_related(
             "genres",
             "reviews__user",

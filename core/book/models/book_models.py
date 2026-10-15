@@ -2,6 +2,7 @@ from django.db import models
 from django.db.models import Avg
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.text import slugify
+from ..api.querysets import BookQuerySet
 
 # Create your models here.
 
@@ -23,6 +24,8 @@ class Book(models.Model):
     published_date = models.DateField(auto_now=False, auto_now_add=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    objects = BookQuerySet.as_manager()
+    
     def save(self, *args, **kwargs):
         if not self.slug:
             slug = slugify(self.title)
